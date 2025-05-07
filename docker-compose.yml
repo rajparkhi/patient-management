@@ -28,8 +28,6 @@ services:
       - BILLING_SERVICE_ADDRESS=billing-service
       - BILLING_SERVICE_GRPC_PORT=9001
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-    ports:
-      - "4000:4000"
     networks:
       - internal
     depends_on:
@@ -79,6 +77,53 @@ services:
       - KAFKA_CFG_PROCESS_ROLES=controller,broker
     networks:
       - internal
+
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "4004:4004"
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:4005
+    networks:
+      - internal
+    depends_on:
+      - patient-service
+
+
+  auth-service-db:
+    image: postgres:latest
+    container_name: auth-service-db
+    restart: always
+    environment:
+      - POSTGRES_USER=admin_user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=db
+    ports:
+      - "5001:5432"
+    volumes:
+      - ./auth-service-db:/var/lib/postgresql/data
+    networks:
+      - internal
+
+
+  auth-service:
+    build:
+      context: ./auth-service
+    container_name: auth-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://auth-service-db:5432/db
+      - SPRING_DATASOURCE_USERNAME=admin_user
+      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_SQL_INIT_MODE=always
+      - JWT_SECRET=85ab80f1e730cbb723469b900843a75f54d544ddd913b82817ecdd0fe309c1f000b565c7a0b4ff238cd50cdb1e8b80237d98591c5a09860e7976c5e62dc5343bd90c3937dbf67a593979d65bcc097fa9fb544531782549ccb478502690b7f3b65e66eb2869a82aa7221696fab9bd9c332fdd569f5350f8902b76a13998f30bc24864e4baf84c07f43fd921859cd1429edf427a98052a2399ddfb4041cae331a0f6bab3e63fd89840b6c2c328c454872dbe8fd8acacac91064c915e6cf77274452dc37c0eb6be30dfb3710532093ed8a23ac926ce46775fc2f1639d9214faa6893fbbd4f620cf2167df800b63118fbb9ec4bf7e143bc12b6ef33ab68a1d89af1e
+    networks:
+      - internal
+    depends_on:
+      - auth-service-db
 
 networks:
   internal:
